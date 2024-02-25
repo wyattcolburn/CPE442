@@ -11,8 +11,6 @@ using namespace cv;
 
 
 struct MyStruct { 
-
-
   //init will all be the same frame, frame passed to struct 
   Mat orginal_frame;  
   Mat sobel_frame; 
@@ -21,7 +19,7 @@ struct MyStruct {
   int cols;
  
   bool esc_flag;
-
+  //inits the size of the frames
   void structFunction(int rows, int cols) {
     orginal_frame = Mat(rows, cols, CV_8UC3);
     sobel_frame = Mat(rows, cols, CV_8UC1);
@@ -31,8 +29,7 @@ struct MyStruct {
 
 void *thread_operation(void * arg) {
   //grayscale operation portion of function
-  //changes thread1.greyscale which sobel will eventaully use
-  //thread1.greyscale_frame(thread1.orginal_frame.rows, thread1.orginal_frame.cols, CV_8UC1);
+  //changes thread1.orginal_frame which sobel will eventaully use
   MyStruct* thread1 = static_cast<MyStruct*>(arg);
   for (int i = 0; i < thread1 -> orginal_frame.rows; ++i) 
   {
@@ -41,8 +38,6 @@ void *thread_operation(void * arg) {
       Vec3b pixel = thread1 -> orginal_frame.at<Vec3b>(i, j);
       //weighted average to make greyscale pixel
       thread1 ->orginal_frame.at<uchar>(i,j) = uchar(pixel[0] * .2126 + pixel[1] * .7152 + pixel[2] *.0722); 
-
-
     }
   }
   //sobel filter porition, 
@@ -157,7 +152,7 @@ int main(int argc, char** argv)
       pthread_join(threads[i], NULL);
     }
     //need to combined the threads info now
-    //
+    
     
     //faster if i define size, sobel size.rows = og.rows -2, same for cols
     Mat combined_frame = Mat::zeros(frame.rows - 2, frame.cols - 2, CV_8UC1);
