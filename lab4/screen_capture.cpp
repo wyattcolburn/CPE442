@@ -14,8 +14,7 @@ struct MyStruct {
 
 
   //init will all be the same frame, frame passed to struct 
-  Mat orginal_frame; 
-  Mat greyscale_frame; 
+  Mat orginal_frame;  
   Mat sobel_frame; 
   //used to set the size of the frames (1/4) of the cap 
   int rows;
@@ -25,7 +24,6 @@ struct MyStruct {
 
   void structFunction(int rows, int cols) {
     orginal_frame = Mat(rows, cols, CV_8UC3);
-    greyscale_frame = Mat(rows, cols, CV_8UC1);
     sobel_frame = Mat(rows, cols, CV_8UC1);
 
   }
@@ -42,26 +40,25 @@ void *thread_operation(void * arg) {
     {
       Vec3b pixel = thread1 -> orginal_frame.at<Vec3b>(i, j);
       //weighted average to make greyscale pixel
-      thread1 ->greyscale_frame.at<uchar>(i,j) = uchar(pixel[0] * .2126 + pixel[1] * .7152 + pixel[2] *.0722); 
+      thread1 ->orginal_frame.at<uchar>(i,j) = uchar(pixel[0] * .2126 + pixel[1] * .7152 + pixel[2] *.0722); 
 
 
     }
   }
   //sobel filter porition, 
 
-  //thread1.sobel_frame(greyscale_color.rows, greyscale_color.cols, CV_8UC1);
   int sobel_x_matrix[3][3] = {{-1, 0, 1}, {-2, 0, 2}, {-1, 0, 1}};
   int sobel_y_matrix[3][3] = {{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}};
 
-  for (int i = 1; i < thread1 -> greyscale_frame.rows - 1; ++i) {
-    for  (int j = 1; j < thread1 -> greyscale_frame.cols - 1; ++j) {
+  for (int i = 1; i < thread1 -> orginal_frame.rows - 1; ++i) {
+    for  (int j = 1; j < thread1 -> orginal_frame.cols - 1; ++j) {
       int sumX = 0;
       int sumY = 0;
 
       for (int m = -1; m <= 1; ++m) {
         for (int n = -1; n <= 1; ++n) {
-          sumX += thread1 -> greyscale_frame.at<uchar>(i + m, j + n) * sobel_x_matrix[m + 1][n + 1];
-          sumY += thread1 -> greyscale_frame.at<uchar>(i + m, j + n) * sobel_y_matrix[m + 1][n + 1];
+          sumX += thread1 -> orginal_frame.at<uchar>(i + m, j + n) * sobel_x_matrix[m + 1][n + 1];
+          sumY += thread1 -> orginal_frame.at<uchar>(i + m, j + n) * sobel_y_matrix[m + 1][n + 1];
         }
       }
       //write pixels of sobel_frame based on calculations above
@@ -85,29 +82,33 @@ int main(int argc, char** argv)
     return 0;
   }
   int num_threads = 4;
-  int counter = 0;
   pthread_t threads[num_threads];
   MyStruct thread_data[num_threads];
-  //clock_t start_time, end_time;
-  //start_time = clock();
+  
+  int fpsCounter = 0;
+  clock_t fpsStart = clock();
   while (1)
   {
     Mat frame;
 
     // Capture frame-by-frame and update orginal_frame in the struct
     cap >> frame;
-    counter = counter + 1;
+    // counter = counter + 1;
+    fpsCounter++;
+    clock_t currentTime = clock();
+    double elapsedSeconds = ((double)(currentTime - fpsStart)) / CLOCKS_PER_SEC;
+    if (elapsedSeconds >= 1.0)
+    {
+      // Calculate FPS
+      double fps = static_cast<double>(fpsCounter) / elapsedSeconds;
 
-    //thread_data array of structs, each struct has portion of the frame to work on
-    // for (int i = 0; i < num_threads; i++) {
-    //   thread_data[i] = MyStruct();
-    //   thread_data[i].rows = frame.rows;
-    //   thread_data[i].cols = frame.cols / 4;
-    //   thread_data[i].structFunction(thread_data[i].rows, thread_data[i].cols);
-    //   thread_data[i].orginal_frame = frame.colRange((i * frame.cols) / num_threads, ((i + 1) * frame.cols) / num_threads);
-    //   thread_data[i].esc_flag = true;
-    //   //frame.colRange(startVal, endVal)
-    // }
+      // Display FPS
+      printf("Frames per second: %.2f\n", fps);
+
+      // Reset counters
+      fpsCounter = 0;
+      fpsStart = clock();
+    }
 
     //just hardcode lol
     thread_data[0] = MyStruct();
@@ -160,7 +161,8 @@ int main(int argc, char** argv)
     
     //faster if i define size, sobel size.rows = og.rows -2, same for cols
     Mat combined_frame = Mat::zeros(frame.rows - 2, frame.cols - 2, CV_8UC1);
-    //
+    
+    //crop boundries
     Range row1(1, thread_data[0].sobel_frame.rows -1);
     Range col1(1, thread_data[0].sobel_frame.cols - 1);
     Range row2(1, thread_data[1].sobel_frame.rows -1);
@@ -173,7 +175,7 @@ int main(int argc, char** argv)
       
     hconcat(thread_data[0].sobel_frame(row1, col1), thread_data[1].sobel_frame(row2, col2), combined_frame); 
     hconcat(combined_frame, thread_data[2].sobel_frame(row3, col3), combined_frame);
-    hconcat(combined_frame, thread_data[3].sobel_frame(row3, col4), combined_frame);
+    hconcat(combined_frame, thread_data[3].sobel_frame(row4, col4), combined_frame);
     // Display the combined frame
     imshow("Combined Sobel Filter", combined_frame);
     
@@ -191,12 +193,6 @@ int main(int argc, char** argv)
 
   cap.release();
   destroyAllWindows();
-  // end_time = clock();
-  // double cpu_time_used; 
-  // cpu_time_used = ((double) (end_time - start_time)) / CLOCKS_PER_SEC;
-  //
-  // printf("Time taken: %f seconds\n", cpu_time_used);
-  // printf("Counter val %d", counter);
-  // printf("Frames per sec %f", float(cpu_time_used)/ counter);
+  
   return 0;
 }
